@@ -33,6 +33,11 @@ function searchGoogleToSheet() {
 
   const results = data.organic_results || [];
 
+  Logger.log("SERP results count: " + results.length);
+
+  inputSheet.getRange("B1").setValue("result_count");
+  inputSheet.getRange("B2").setValue(results.length);
+
   resultSheet.clearContents();
 
   resultSheet.appendRow([
@@ -254,6 +259,10 @@ function saveToSupabase(rowData) {
     .getScriptProperties()
     .getProperty("SUPABASE_ANON_KEY");
 
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error("找不到 SUPABASE_URL 或 SUPABASE_ANON_KEY");
+  }
+
   const endpoint = SUPABASE_URL + "/rest/v1/serp_results";
 
   const options = {
@@ -269,6 +278,16 @@ function saveToSupabase(rowData) {
   };
 
   const response = UrlFetchApp.fetch(endpoint, options);
+  const statusCode = response.getResponseCode();
 
-  Logger.log(response.getContentText());
+  if (statusCode < 200 || statusCode >= 300) {
+    throw new Error(
+      "Supabase 寫入失敗，rank=" +
+      rowData.rank +
+      "，status=" +
+      statusCode +
+      "，message=" +
+      response.getContentText()
+    );
+  }
 }
