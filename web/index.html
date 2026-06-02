@@ -1,25 +1,25 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SEO SERP Entity Analyzer</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <main class="container">
     <h1>SEO SERP Entity Analyzer</h1>
 
-    <p>
-      輸入關鍵字後，可透過 Google Apps Script 執行 SERP 分析，
-      並將結果輸出到 Google Sheet 與 Supabase。
-    </p>
-
+    <input id="keywordInput" type="text" placeholder="請輸入關鍵字，例如：4G 吃到飽" />
     <button id="runButton">Run SERP Analysis</button>
 
     <p id="status"></p>
+
   </main>
 
   <script src="script.js"></script>
 </body>
+
 </html>
