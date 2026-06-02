@@ -1,4 +1,4 @@
-const APPS_SCRIPT_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzUTMGdUw-z2njptvrVeyo99jte7nLkUl9Va7SuiD_3fsIQKMewCuRhTtqgDqZMGURXrA/exec";
 
 const runButton = document.getElementById("runButton");
 const statusText = document.getElementById("status");
@@ -13,8 +13,8 @@ runButton.addEventListener("click", async () => {
 
     statusText.textContent = data.message || "Analysis completed.";
   } catch (error) {
-    statusText.textContent = "Failed to run analysis.";
     console.error(error);
+    statusText.textContent = "Failed to run analysis.";
   } finally {
     runButton.disabled = false;
   }
