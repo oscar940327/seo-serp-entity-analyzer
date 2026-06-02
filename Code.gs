@@ -59,15 +59,27 @@ function searchGoogleToSheet() {
       allEntities.push(entity);
     });
 
+    const rowData = {
+      keyword: keyword,
+      rank: index + 1,
+      title: title,
+      url: link,
+      snippet: snippet,
+      entities: entities.join(", "),
+      entity_count: entities.length
+    };
+
     resultSheet.appendRow([
-      keyword,
-      index + 1,
-      title,
-      link,
-      snippet,
-      entities.join(", "),
-      entities.length
+      rowData.keyword,
+      rowData.rank,
+      rowData.title,
+      rowData.url,
+      rowData.snippet,
+      rowData.entities,
+      rowData.entity_count
     ]);
+
+    saveToSupabase(rowData);
   });
 
   writeEntitySummary(spreadsheet, allEntities);
@@ -231,4 +243,32 @@ function onOpen() {
   ui.createMenu("SEO Analyzer")
     .addItem("Run SERP Analysis", "searchGoogleToSheet")
     .addToUi();
+}
+
+function saveToSupabase(rowData) {
+  const SUPABASE_URL = PropertiesService
+    .getScriptProperties()
+    .getProperty("SUPABASE_URL");
+
+  const SUPABASE_ANON_KEY = PropertiesService
+    .getScriptProperties()
+    .getProperty("SUPABASE_ANON_KEY");
+
+  const endpoint = SUPABASE_URL + "/rest/v1/serp_results";
+
+  const options = {
+    method: "post",
+    contentType: "application/json",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: "Bearer " + SUPABASE_ANON_KEY,
+      Prefer: "return=minimal"
+    },
+    payload: JSON.stringify(rowData),
+    muteHttpExceptions: true
+  };
+
+  const response = UrlFetchApp.fetch(endpoint, options);
+
+  Logger.log(response.getContentText());
 }
