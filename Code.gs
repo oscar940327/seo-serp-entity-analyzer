@@ -291,3 +291,14 @@ function saveToSupabase(rowData) {
     );
   }
 }
+
+function doGet(e) {
+  searchGoogleToSheet();
+
+  return ContentService
+    .createTextOutput(JSON.stringify({
+      status: "success",
+      message: "SERP analysis completed"
+    }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
