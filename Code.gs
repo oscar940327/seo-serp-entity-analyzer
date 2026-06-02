@@ -8,7 +8,7 @@ function searchGoogleToSheet() {
   const keyword = sheet.getRange("A2").getValue();
 
   const url =
-    "https://serpapi.com/search.json" +
+    "https://serpapi.com/search.json" + 
     "?engine=google" +
     "&q=" + encodeURIComponent(keyword) +
     "&google_domain=google.com.tw" +
@@ -25,12 +25,51 @@ function searchGoogleToSheet() {
   sheet.getRange("A4:E100").clearContent();
 
   results.slice(0, 10).forEach((item, index) => {
-    sheet.appendRow([
+    const title = item.title || "";
+    const link = item.link || "";
+    const snippet = item.snippet || "";
+
+    const text = title + " " + snippet;
+    const entities = extractEntities(text);
+
+    resultSheet.appendRow([
       keyword,
       index + 1,
-      item.title || "",
-      item.link || "",
-      item.snippet || ""
+      title,
+      link,
+      snippet,
+      entities.join(", "),
+      entities.length
     ]);
   });
+}
+
+function extractEntities(text){
+  const Entity_KEYWORDS = [
+    "4G",
+    "5G",
+    "吃到飽",
+    "中華電信",
+    "台灣大哥大",
+    "遠傳",
+    "亞太電信",
+    "台灣之星",
+    "月租",
+    "不限速",
+    "網速",
+    "方案",
+    "電信",
+    "資費",
+    "合約"
+  ];
+
+  const foundEntities = [];
+
+  ENTITY_KEYWORDS.forEach(entity => {
+    if(texst.includes(entity)) {
+      foundEntities.push(entity);
+    }
+  });
+
+  return foundEntities;
 }
