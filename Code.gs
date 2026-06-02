@@ -71,6 +71,7 @@ function searchGoogleToSheet() {
   });
 
   writeEntitySummary(spreadsheet, allEntities);
+  writeEntityGroups(spreadsheet, allEntities);
 }
 
 function extractEntities(text) {
@@ -137,5 +138,58 @@ function writeEntitySummary(spreadsheet, allEntities) {
 
   sortedEntities.forEach(([entity, count]) => {
     summarySheet.appendRow([entity, count]);
+  });
+}
+
+function getEntityGroup(entity) {
+  const groups = {
+    "電信業者": ["中華電信", "台灣大哥大", "遠傳", "亞太電信", "台灣之星"],
+    "方案特色": ["吃到飽", "不限速", "限速", "月租", "資費", "方案"],
+    "網路服務": ["4G", "5G", "網速", "上網", "流量"],
+    "申辦條件": ["合約", "門號", "NP", "攜碼", "學生"],
+    "優惠行銷": ["優惠"]
+  };
+
+  for (const groupName in groups) {
+    if (groups[groupName].includes(entity)) {
+      return groupName;
+    }
+  }
+
+  return "其他";
+}
+
+function writeEntityGroups(spreadsheet, allEntities) {
+  let groupSheet = spreadsheet.getSheetByName("Entity Groups");
+
+  if (!groupSheet) {
+    groupSheet = spreadsheet.insertSheet("Entity Groups");
+  }
+
+  groupSheet.clearContents();
+  groupSheet.appendRow(["group", "entity", "count"]);
+
+  const entityCountMap = {};
+
+  allEntities.forEach(entity => {
+    if (!entityCountMap[entity]) {
+      entityCountMap[entity] = 0;
+    }
+    entityCountMap[entity]++;
+  });
+
+  const rows = Object.entries(entityCountMap)
+    .map(([entity, count]) => {
+      return [getEntityGroup(entity), entity, count];
+    })
+    .sort((a, b) => {
+      if (a[0] === b[0]) {
+        return b[2] - a[2];
+      }
+      return a[0].localeCompare(b[0]);
+    });
+
+  rows.forEach(row => {
+    groupSheet.appendRow(row);
   });
 }
