@@ -224,3 +224,11 @@ function writeGroupSummary(spreadsheet, allEntities) {
     groupSummarySheet.appendRow([group, count]);
   });
 }
+
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+
+  ui.createMenu("SEO Analyzer")
+    .addItem("Run SERP Analysis", "searchGoogleToSheet")
+    .addToUi();
+}
