@@ -3,12 +3,23 @@ function searchGoogleToSheet() {
     .getScriptProperties()
     .getProperty("SERP_API_KEY");
 
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  if (!SERP_API_KEY) {
+    throw new Error("找不到 SERP_API_KEY，請先到 Script Properties 設定 API key");
+  }
 
-  const keyword = sheet.getRange("A2").getValue();
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+  const inputSheet = spreadsheet.getSheetByName("Input");
+  const resultSheet = spreadsheet.getSheetByName("SERP Results");
+
+  const keyword = inputSheet.getRange("A2").getValue();
+
+  if (!keyword) {
+    throw new Error("請先在 Input!A2 輸入關鍵字");
+  }
 
   const url =
-    "https://serpapi.com/search.json" + 
+    "https://serpapi.com/search.json" +
     "?engine=google" +
     "&q=" + encodeURIComponent(keyword) +
     "&google_domain=google.com.tw" +
@@ -22,7 +33,17 @@ function searchGoogleToSheet() {
 
   const results = data.organic_results || [];
 
-  sheet.getRange("A4:E100").clearContent();
+  resultSheet.clearContents();
+
+  resultSheet.appendRow([
+    "keyword",
+    "rank",
+    "title",
+    "url",
+    "snippet",
+    "entities",
+    "entity_count"
+  ]);
 
   results.slice(0, 10).forEach((item, index) => {
     const title = item.title || "";
@@ -44,8 +65,8 @@ function searchGoogleToSheet() {
   });
 }
 
-function extractEntities(text){
-  const Entity_KEYWORDS = [
+function extractEntities(text) {
+  const ENTITY_KEYWORDS = [
     "4G",
     "5G",
     "吃到飽",
@@ -56,17 +77,25 @@ function extractEntities(text){
     "台灣之星",
     "月租",
     "不限速",
+    "限速",
     "網速",
     "方案",
     "電信",
     "資費",
-    "合約"
+    "合約",
+    "門號",
+    "上網",
+    "流量",
+    "優惠",
+    "學生",
+    "NP",
+    "攜碼"
   ];
 
   const foundEntities = [];
 
   ENTITY_KEYWORDS.forEach(entity => {
-    if(texst.includes(entity)) {
+    if (text.includes(entity)) {
       foundEntities.push(entity);
     }
   });
