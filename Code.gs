@@ -45,6 +45,8 @@ function searchGoogleToSheet() {
     "entity_count"
   ]);
 
+  const allEntities = [];
+
   results.slice(0, 10).forEach((item, index) => {
     const title = item.title || "";
     const link = item.link || "";
@@ -52,6 +54,10 @@ function searchGoogleToSheet() {
 
     const text = title + " " + snippet;
     const entities = extractEntities(text);
+
+    entities.forEach(entity => {
+      allEntities.push(entity);
+    });
 
     resultSheet.appendRow([
       keyword,
@@ -63,6 +69,8 @@ function searchGoogleToSheet() {
       entities.length
     ]);
   });
+
+  writeEntitySummary(spreadsheet, allEntities);
 }
 
 function extractEntities(text) {
@@ -101,4 +109,33 @@ function extractEntities(text) {
   });
 
   return foundEntities;
+}
+
+function writeEntitySummary(spreadsheet, allEntities) {
+  let summarySheet = spreadsheet.getSheetByName("Entity Summary");
+
+  if (!summarySheet) {
+    summarySheet = spreadsheet.insertSheet("Entity Summary");
+  }
+
+  summarySheet.clearContents();
+
+  summarySheet.appendRow(["entity", "count"]);
+
+  const entityCountMap = {};
+
+  allEntities.forEach(entity => {
+    if (!entityCountMap[entity]) {
+      entityCountMap[entity] = 0;
+    }
+
+    entityCountMap[entity]++;
+  });
+
+  const sortedEntities = Object.entries(entityCountMap)
+    .sort((a, b) => b[1] - a[1]);
+
+  sortedEntities.forEach(([entity, count]) => {
+    summarySheet.appendRow([entity, count]);
+  });
 }
