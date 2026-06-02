@@ -72,6 +72,7 @@ function searchGoogleToSheet() {
 
   writeEntitySummary(spreadsheet, allEntities);
   writeEntityGroups(spreadsheet, allEntities);
+  writeGroupSummary(spreadsheet, allEntities);
 }
 
 function extractEntities(text) {
@@ -191,5 +192,35 @@ function writeEntityGroups(spreadsheet, allEntities) {
 
   rows.forEach(row => {
     groupSheet.appendRow(row);
+  });
+}
+
+function writeGroupSummary(spreadsheet, allEntities) {
+  let groupSummarySheet = spreadsheet.getSheetByName("Group Summary");
+
+  if (!groupSummarySheet) {
+    groupSummarySheet = spreadsheet.insertSheet("Group Summary");
+  }
+
+  groupSummarySheet.clearContents();
+  groupSummarySheet.appendRow(["group", "total_count"]);
+
+  const groupCountMap = {};
+
+  allEntities.forEach(entity => {
+    const group = getEntityGroup(entity);
+
+    if (!groupCountMap[group]) {
+      groupCountMap[group] = 0;
+    }
+
+    groupCountMap[group]++;
+  });
+
+  const sortedGroups = Object.entries(groupCountMap)
+    .sort((a, b) => b[1] - a[1]);
+
+  sortedGroups.forEach(([group, count]) => {
+    groupSummarySheet.appendRow([group, count]);
   });
 }
