@@ -148,8 +148,17 @@ function extractEntitiesWithOpenRouter(keyword, results, apiKey) {
           "只根據每筆 Google SERP 的 title 和 snippet 抽取 entities，不要使用外部知識。",
           "每筆結果的 entities 必須是該筆 title 或 snippet 中明確出現、或語意上直接指向的 SEO 重要詞。",
           "entity 應包含品牌、產品、服務、功能、需求、比較條件、價格/方案、地點、受眾、重要概念。",
+          "請先全域比對所有 SERP 結果，再輸出標準化後的 canonical entity name。",
+          "相同或高度相近的概念必須合併成同一個 entity name，且在所有結果中使用完全相同的寫法。",
+          "entity name 請使用短名詞或短詞，不要直接複製很長的 title/snippet 片段。",
+          "不要把價格、規格、合約、優惠、限制條件全部塞進同一個 entity；應拆成較穩定的 entity，例如 品牌、產品/服務類型、價格條件、規格條件、合約條件。",
+          "標準化規則適用任何關鍵字，不要因為範例而輸出 title/snippet 中不存在的 entity。",
+          "同一概念若只是差在空白、標點、方案/專案/資費/推薦/比較等修飾詞，應合併成同一個短 entity。",
+          "若一個長詞同時包含核心產品與條件，請拆開。例如「A產品最低599元方案」應拆成「A產品」與「599 元」。",
+          "價格類 entity 請統一成「599 元」、「月租 599 元」、「每月 599 元」這類一致格式；規格類 entity 也請統一單位格式。",
           "不要抽太泛的詞，例如 文章、推薦、最新、完整、介紹，除非它是搜尋意圖的核心。",
-          "group 請使用繁體中文短分類，例如 品牌、產品類型、方案特色、使用需求、價格條件、通路平台、其他。"
+          "每筆結果建議保留 3 到 8 個最重要 entities，避免輸出大量細碎、重複、只差修飾語的 entities。",
+          "group 請使用繁體中文短分類，例如 品牌、產品類型、方案特色、價格條件、速度條件、合約條件、通路平台、優惠、其他。"
         ].join("\n")
       },
       {
@@ -275,6 +284,11 @@ function normalizeEntityName(value) {
   return (value || "")
     .toString()
     .replace(/\s+/g, " ")
+    .replace(/臺灣/g, "台灣")
+    .replace(/(\d+)\s*元/g, "$1 元")
+    .replace(/(\d+)\s*GB/g, "$1GB")
+    .replace(/(\d+)\s*Mbps/gi, "$1Mbps")
+    .replace(/(方案|專案|資費)$/g, "")
     .trim();
 }
 
