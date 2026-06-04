@@ -347,6 +347,9 @@ function writeChartsInSummarySheets(spreadsheet) {
       .addRange(entityRange)
       .setPosition(1, 4, 0, 0)
       .setOption("title", "Top Entities in SERP Results")
+      .setOption("width", 900)
+      .setOption("height", 500)
+      .setOption("fontSize", 14)
       .setOption("legend", { position: "none" })
       .build();
 
@@ -362,6 +365,9 @@ function writeChartsInSummarySheets(spreadsheet) {
       .addRange(groupRange)
       .setPosition(1, 4, 0, 0)
       .setOption("title", "Entity Topic Group Distribution")
+      .setOption("width", 900)
+      .setOption("height", 500)
+      .setOption("fontSize", 14)
       .build();
 
     groupSummarySheet.insertChart(groupChart);
