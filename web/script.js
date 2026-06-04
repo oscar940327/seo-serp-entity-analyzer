@@ -1,10 +1,68 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvkCkeFzTGMV62fddOf2oWY4fXeoKyK1JfagwEaphbnSGSv0lWmTuy-s0gPgyq1tDd8Q/exec";
+const LOGIN_USERNAME = "admin";
+const LOGIN_PASSWORD = "123456";
+const LOGIN_STORAGE_KEY = "seoSerpAnalyzerLoggedIn";
 
+const loginSection = document.getElementById("loginSection");
+const appSection = document.getElementById("appSection");
+const usernameInput = document.getElementById("usernameInput");
+const passwordInput = document.getElementById("passwordInput");
+const loginButton = document.getElementById("loginButton");
+const logoutButton = document.getElementById("logoutButton");
+const loginStatus = document.getElementById("loginStatus");
+const userLabel = document.getElementById("userLabel");
 const keywordInput = document.getElementById("keywordInput");
 const runButton = document.getElementById("runButton");
 const statusText = document.getElementById("status");
 
+function isLoggedIn() {
+  return localStorage.getItem(LOGIN_STORAGE_KEY) === "true";
+}
+
+function updateAuthView() {
+  if (isLoggedIn()) {
+    loginSection.classList.add("hidden");
+    appSection.classList.remove("hidden");
+    userLabel.textContent = "已登入：" + LOGIN_USERNAME;
+    keywordInput.focus();
+    return;
+  }
+
+  loginSection.classList.remove("hidden");
+  appSection.classList.add("hidden");
+  userLabel.textContent = "";
+  statusText.textContent = "";
+  usernameInput.focus();
+}
+
+function login() {
+  const username = usernameInput.value.trim();
+  const password = passwordInput.value;
+
+  if (username === LOGIN_USERNAME && password === LOGIN_PASSWORD) {
+    localStorage.setItem(LOGIN_STORAGE_KEY, "true");
+    loginStatus.textContent = "";
+    passwordInput.value = "";
+    updateAuthView();
+    return;
+  }
+
+  loginStatus.textContent = "帳號或密碼錯誤";
+}
+
+function logout() {
+  localStorage.removeItem(LOGIN_STORAGE_KEY);
+  keywordInput.value = "";
+  statusText.textContent = "";
+  updateAuthView();
+}
+
 async function runAnalysis() {
+  if (!isLoggedIn()) {
+    updateAuthView();
+    return;
+  }
+
   const keyword = keywordInput.value.trim();
 
   if (!keyword) {
@@ -40,10 +98,20 @@ async function runAnalysis() {
   }
 }
 
+loginButton.addEventListener("click", login);
+logoutButton.addEventListener("click", logout);
 runButton.addEventListener("click", runAnalysis);
+
+passwordInput.addEventListener("keydown", event => {
+  if (event.key === "Enter") {
+    login();
+  }
+});
 
 keywordInput.addEventListener("keydown", event => {
   if (event.key === "Enter") {
     runAnalysis();
   }
 });
+
+updateAuthView();

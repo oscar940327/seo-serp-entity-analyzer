@@ -12,10 +12,24 @@
   <main class="container">
     <h1>SEO SERP Entity Analyzer</h1>
 
-    <input id="keywordInput" type="text" placeholder="請輸入關鍵字，例如：4G 吃到飽" />
-    <button id="runButton">Run SERP Analysis</button>
+    <section id="loginSection">
+      <input id="usernameInput" type="text" autocomplete="username" placeholder="帳號" />
+      <input id="passwordInput" type="password" autocomplete="current-password" placeholder="密碼" />
+      <button id="loginButton">登入</button>
+      <p id="loginStatus"></p>
+    </section>
 
-    <p id="status"></p>
+    <section id="appSection" class="hidden">
+      <div class="toolbar">
+        <span id="userLabel"></span>
+        <button id="logoutButton" type="button">登出</button>
+      </div>
+
+      <input id="keywordInput" type="text" placeholder="請輸入關鍵字，例如：4G 吃到飽" />
+      <button id="runButton">Run SERP Analysis</button>
+
+      <p id="status"></p>
+    </section>
 
   </main>
 

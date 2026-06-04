@@ -30,3 +30,24 @@ input {
 #status {
   margin-top: 20px;
 }
+
+#loginStatus {
+  color: #b42318;
+  margin-top: 12px;
+}
+
+.hidden {
+  display: none;
+}
+
+.toolbar {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+#logoutButton {
+  padding: 8px 14px;
+}
