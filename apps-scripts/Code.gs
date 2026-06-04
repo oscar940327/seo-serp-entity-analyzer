@@ -90,6 +90,7 @@ function searchGoogleToSheet() {
   writeEntitySummary(spreadsheet, allEntities);
   writeEntityGroups(spreadsheet, allEntities);
   writeGroupSummary(spreadsheet, allEntities);
+  writeChartsInSummarySheets(spreadsheet);
 }
 
 function extractEntities(text) {
@@ -293,12 +294,76 @@ function saveToSupabase(rowData) {
 }
 
 function doGet(e) {
+  const keyword = e.parameter.keyword;
+
+  if (!keyword) {
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        status: "error",
+        message: "Missing keyword"
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const inputSheet = spreadsheet.getSheetByName("Input");
+
+  inputSheet.getRange("A2").setValue(keyword);
+
   searchGoogleToSheet();
 
   return ContentService
     .createTextOutput(JSON.stringify({
       status: "success",
-      message: "SERP analysis completed"
+      message: "SERP analysis completed",
+      keyword: keyword
     }))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function writeChartsInSummarySheets(spreadsheet) {
+  const entitySummarySheet = spreadsheet.getSheetByName("Entity Summary");
+  const groupSummarySheet = spreadsheet.getSheetByName("Group Summary");
+
+  // 移除 Entity Summary 舊圖表
+  entitySummarySheet.getCharts().forEach(chart => {
+    entitySummarySheet.removeChart(chart);
+  });
+
+  // 移除 Group Summary 舊圖表
+  groupSummarySheet.getCharts().forEach(chart => {
+    groupSummarySheet.removeChart(chart);
+  });
+
+  const entityLastRow = entitySummarySheet.getLastRow();
+  const groupLastRow = groupSummarySheet.getLastRow();
+
+  // Entity Summary 長條圖
+  if (entityLastRow > 1) {
+    const entityRange = entitySummarySheet.getRange("A1:B" + entityLastRow);
+
+    const entityChart = entitySummarySheet.newChart()
+      .setChartType(Charts.ChartType.BAR)
+      .addRange(entityRange)
+      .setPosition(1, 4, 0, 0)
+      .setOption("title", "Top Entities in SERP Results")
+      .setOption("legend", { position: "none" })
+      .build();
+
+    entitySummarySheet.insertChart(entityChart);
+  }
+
+  // Group Summary 圓餅圖
+  if (groupLastRow > 1) {
+    const groupRange = groupSummarySheet.getRange("A1:B" + groupLastRow);
+
+    const groupChart = groupSummarySheet.newChart()
+      .setChartType(Charts.ChartType.PIE)
+      .addRange(groupRange)
+      .setPosition(1, 4, 0, 0)
+      .setOption("title", "Entity Topic Group Distribution")
+      .build();
+
+    groupSummarySheet.insertChart(groupChart);
+  }
 }
