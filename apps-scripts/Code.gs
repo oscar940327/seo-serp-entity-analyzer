@@ -1,22 +1,35 @@
-function searchGoogleToSheet() {
+function searchGoogleToSheet(keywordFromRequest) {
   const SERP_API_KEY = PropertiesService
     .getScriptProperties()
     .getProperty("SERP_API_KEY");
+
+  const OPENROUTER_API_KEY = PropertiesService
+    .getScriptProperties()
+    .getProperty("OPENROUTER_API_KEY");
 
   if (!SERP_API_KEY) {
     throw new Error("找不到 SERP_API_KEY，請先到 Script Properties 設定 API key");
   }
 
+  if (!OPENROUTER_API_KEY) {
+    throw new Error("找不到 OPENROUTER_API_KEY，請先到 Script Properties 設定 API key");
+  }
+
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
 
-  const inputSheet = spreadsheet.getSheetByName("Input");
-  const resultSheet = spreadsheet.getSheetByName("SERP Results");
+  const inputSheet = getOrCreateSheet(spreadsheet, "Input");
+  const resultSheet = getOrCreateSheet(spreadsheet, "SERP Results");
 
-  const keyword = inputSheet.getRange("A2").getValue();
+  const keyword = (keywordFromRequest || inputSheet.getRange("A2").getValue() || "")
+    .toString()
+    .trim();
 
   if (!keyword) {
     throw new Error("請先在 Input!A2 輸入關鍵字");
   }
+
+  inputSheet.getRange("A1").setValue("keyword");
+  inputSheet.getRange("A2").setValue(keyword);
 
   const url =
     "https://serpapi.com/search.json" +
@@ -31,7 +44,14 @@ function searchGoogleToSheet() {
   const response = UrlFetchApp.fetch(url);
   const data = JSON.parse(response.getContentText());
 
-  const results = data.organic_results || [];
+  const results = (data.organic_results || []).slice(0, 10).map((item, index) => {
+    return {
+      rank: index + 1,
+      title: item.title || "",
+      url: item.link || "",
+      snippet: item.snippet || ""
+    };
+  });
 
   Logger.log("SERP results count: " + results.length);
 
@@ -50,26 +70,24 @@ function searchGoogleToSheet() {
     "entity_count"
   ]);
 
+  const analysis = extractEntitiesWithOpenRouter(keyword, results, OPENROUTER_API_KEY);
+  const entitiesByRank = buildEntitiesByRank(analysis.results || []);
   const allEntities = [];
 
-  results.slice(0, 10).forEach((item, index) => {
-    const title = item.title || "";
-    const link = item.link || "";
-    const snippet = item.snippet || "";
+  results.forEach(item => {
+    const entityRecords = entitiesByRank[item.rank] || [];
+    const entities = entityRecords.map(entity => entity.name);
 
-    const text = title + " " + snippet;
-    const entities = extractEntities(text);
-
-    entities.forEach(entity => {
+    entityRecords.forEach(entity => {
       allEntities.push(entity);
     });
 
     const rowData = {
       keyword: keyword,
-      rank: index + 1,
-      title: title,
-      url: link,
-      snippet: snippet,
+      rank: item.rank,
+      title: item.title,
+      url: item.url,
+      snippet: item.snippet,
       entities: entities.join(", "),
       entity_count: entities.length
     };
@@ -91,44 +109,165 @@ function searchGoogleToSheet() {
   writeEntityGroups(spreadsheet, allEntities);
   writeGroupSummary(spreadsheet, allEntities);
   writeChartsInSummarySheets(spreadsheet);
+
+  return {
+    keyword: keyword,
+    resultCount: results.length,
+    entityCount: allEntities.length
+  };
 }
 
-function extractEntities(text) {
-  const ENTITY_KEYWORDS = [
-    "4G",
-    "5G",
-    "吃到飽",
-    "中華電信",
-    "台灣大哥大",
-    "遠傳",
-    "亞太電信",
-    "台灣之星",
-    "月租",
-    "不限速",
-    "限速",
-    "網速",
-    "方案",
-    "電信",
-    "資費",
-    "合約",
-    "門號",
-    "上網",
-    "流量",
-    "優惠",
-    "學生",
-    "NP",
-    "攜碼"
-  ];
+function getOrCreateSheet(spreadsheet, sheetName) {
+  let sheet = spreadsheet.getSheetByName(sheetName);
 
-  const foundEntities = [];
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(sheetName);
+  }
 
-  ENTITY_KEYWORDS.forEach(entity => {
-    if (text.includes(entity)) {
-      foundEntities.push(entity);
+  return sheet;
+}
+
+function extractEntitiesWithOpenRouter(keyword, results, apiKey) {
+  const endpoint = "https://openrouter.ai/api/v1/chat/completions";
+  const payload = {
+    model: "openai/gpt-4.1-mini",
+    temperature: 0.2,
+    messages: [
+      {
+        role: "system",
+        content: [
+          "你是 SEO SERP entity 分析器。",
+          "只根據每筆 Google SERP 的 title 和 snippet 抽取 entities，不要使用外部知識。",
+          "每筆結果的 entities 必須是該筆 title 或 snippet 中明確出現、或語意上直接指向的 SEO 重要詞。",
+          "entity 應包含品牌、產品、服務、功能、需求、比較條件、價格/方案、地點、受眾、重要概念。",
+          "不要抽太泛的詞，例如 文章、推薦、最新、完整、介紹，除非它是搜尋意圖的核心。",
+          "group 請使用繁體中文短分類，例如 品牌、產品類型、方案特色、使用需求、價格條件、通路平台、其他。"
+        ].join("\n")
+      },
+      {
+        role: "user",
+        content: JSON.stringify({
+          keyword: keyword,
+          serp_results: results.map(result => {
+            return {
+              rank: result.rank,
+              title: result.title,
+              snippet: result.snippet
+            };
+          })
+        })
+      }
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "serp_entity_analysis",
+        strict: true,
+        schema: {
+          type: "object",
+          additionalProperties: false,
+          required: ["results"],
+          properties: {
+            results: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["rank", "entities"],
+                properties: {
+                  rank: {
+                    type: "integer"
+                  },
+                  entities: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      additionalProperties: false,
+                      required: ["name", "group"],
+                      properties: {
+                        name: {
+                          type: "string"
+                        },
+                        group: {
+                          type: "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
+  };
+
+  const response = UrlFetchApp.fetch(endpoint, {
+    method: "post",
+    contentType: "application/json",
+    headers: {
+      Authorization: "Bearer " + apiKey,
+      "HTTP-Referer": "https://seo-serp-entity-analyzer.vercel.app",
+      "X-OpenRouter-Title": "SEO SERP Entity Analyzer"
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
   });
 
-  return foundEntities;
+  const statusCode = response.getResponseCode();
+  const body = response.getContentText();
+
+  if (statusCode < 200 || statusCode >= 300) {
+    throw new Error("OpenRouter 分析失敗，status=" + statusCode + "，message=" + body);
+  }
+
+  const data = JSON.parse(body);
+  const content = data.choices &&
+    data.choices[0] &&
+    data.choices[0].message &&
+    data.choices[0].message.content;
+
+  if (!content) {
+    throw new Error("OpenRouter 回傳內容為空");
+  }
+
+  return JSON.parse(content);
+}
+
+function buildEntitiesByRank(results) {
+  const entitiesByRank = {};
+
+  results.forEach(result => {
+    const seen = {};
+    const records = [];
+
+    (result.entities || []).forEach(entity => {
+      const name = normalizeEntityName(entity.name);
+      const group = normalizeEntityName(entity.group) || "其他";
+
+      if (!name || seen[name]) {
+        return;
+      }
+
+      seen[name] = true;
+      records.push({
+        name: name,
+        group: group
+      });
+    });
+
+    entitiesByRank[result.rank] = records;
+  });
+
+  return entitiesByRank;
+}
+
+function normalizeEntityName(value) {
+  return (value || "")
+    .toString()
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function writeEntitySummary(spreadsheet, allEntities) {
@@ -145,11 +284,11 @@ function writeEntitySummary(spreadsheet, allEntities) {
   const entityCountMap = {};
 
   allEntities.forEach(entity => {
-    if (!entityCountMap[entity]) {
-      entityCountMap[entity] = 0;
+    if (!entityCountMap[entity.name]) {
+      entityCountMap[entity.name] = 0;
     }
 
-    entityCountMap[entity]++;
+    entityCountMap[entity.name]++;
   });
 
   const sortedEntities = Object.entries(entityCountMap)
@@ -160,46 +299,28 @@ function writeEntitySummary(spreadsheet, allEntities) {
   });
 }
 
-function getEntityGroup(entity) {
-  const groups = {
-    "電信業者": ["中華電信", "台灣大哥大", "遠傳", "亞太電信", "台灣之星"],
-    "方案特色": ["吃到飽", "不限速", "限速", "月租", "資費", "方案"],
-    "網路服務": ["4G", "5G", "網速", "上網", "流量", "電信"],
-    "申辦條件": ["合約", "門號", "NP", "攜碼", "學生"],
-    "優惠行銷": ["優惠"]
-  };
-
-  for (const groupName in groups) {
-    if (groups[groupName].includes(entity)) {
-      return groupName;
-    }
-  }
-
-  return "其他";
-}
-
 function writeEntityGroups(spreadsheet, allEntities) {
-  let groupSheet = spreadsheet.getSheetByName("Entity Groups");
-
-  if (!groupSheet) {
-    groupSheet = spreadsheet.insertSheet("Entity Groups");
-  }
+  const groupSheet = getOrCreateSheet(spreadsheet, "Entity Groups");
 
   groupSheet.clearContents();
   groupSheet.appendRow(["group", "entity", "count"]);
 
-  const entityCountMap = {};
+  const entityMap = {};
 
   allEntities.forEach(entity => {
-    if (!entityCountMap[entity]) {
-      entityCountMap[entity] = 0;
+    if (!entityMap[entity.name]) {
+      entityMap[entity.name] = {
+        group: entity.group || "其他",
+        count: 0
+      };
     }
-    entityCountMap[entity]++;
+
+    entityMap[entity.name].count++;
   });
 
-  const rows = Object.entries(entityCountMap)
-    .map(([entity, count]) => {
-      return [getEntityGroup(entity), entity, count];
+  const rows = Object.entries(entityMap)
+    .map(([entity, data]) => {
+      return [data.group, entity, data.count];
     })
     .sort((a, b) => {
       if (a[0] === b[0]) {
@@ -214,11 +335,7 @@ function writeEntityGroups(spreadsheet, allEntities) {
 }
 
 function writeGroupSummary(spreadsheet, allEntities) {
-  let groupSummarySheet = spreadsheet.getSheetByName("Group Summary");
-
-  if (!groupSummarySheet) {
-    groupSummarySheet = spreadsheet.insertSheet("Group Summary");
-  }
+  const groupSummarySheet = getOrCreateSheet(spreadsheet, "Group Summary");
 
   groupSummarySheet.clearContents();
   groupSummarySheet.appendRow(["group", "total_count"]);
@@ -226,7 +343,7 @@ function writeGroupSummary(spreadsheet, allEntities) {
   const groupCountMap = {};
 
   allEntities.forEach(entity => {
-    const group = getEntityGroup(entity);
+    const group = entity.group || "其他";
 
     if (!groupCountMap[group]) {
       groupCountMap[group] = 0;
@@ -294,7 +411,7 @@ function saveToSupabase(rowData) {
 }
 
 function doGet(e) {
-  const keyword = e.parameter.keyword;
+  const keyword = e && e.parameter ? e.parameter.keyword : "";
 
   if (!keyword) {
     return ContentService
@@ -305,20 +422,26 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const inputSheet = spreadsheet.getSheetByName("Input");
+  try {
+    const result = searchGoogleToSheet(keyword);
 
-  inputSheet.getRange("A2").setValue(keyword);
-
-  searchGoogleToSheet();
-
-  return ContentService
-    .createTextOutput(JSON.stringify({
-      status: "success",
-      message: "SERP analysis completed",
-      keyword: keyword
-    }))
-    .setMimeType(ContentService.MimeType.JSON);
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        status: "success",
+        message: "SERP analysis completed",
+        keyword: result.keyword,
+        result_count: result.resultCount,
+        entity_count: result.entityCount
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        status: "error",
+        message: error.message
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 function writeChartsInSummarySheets(spreadsheet) {

@@ -18,6 +18,7 @@
 - Google Apps Script
 - Google Sheets
 - SerpApi
+- OpenRouter API
 - Supabase
 - Vercel
 - HTML / CSS / JavaScript
@@ -41,19 +42,22 @@ seo-serp-entity-analyzer/
 2. Vercel 前端呼叫 Apps Script Web App
 3. Apps Script 呼叫 SerpApi
 4. 取得 Google SERP organic results
-5. 抽取 entity 並統計數量
+5. 使用 OpenRouter 串接 LLM 分析 title / snippet 並抽取 entity
 6. 輸出到 Google Sheet
 7. 同步儲存到 Supabase
 
+## Apps Script Properties
+
+請在 Apps Script 的 Script Properties 設定：
+
+- `SERP_API_KEY`
+- `OPENROUTER_API_KEY`
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+
 ## Entity Groups
 
-目前 entity 分群包含：
-
-- 電信業者
-- 方案特色
-- 網路服務
-- 申辦條件
-- 優惠行銷
+Entity 分群由 OpenRouter 串接的 LLM 依據每次 SERP 的 title / snippet 動態產生，不再綁定單一產業字典。
 
 ## Notes
 
