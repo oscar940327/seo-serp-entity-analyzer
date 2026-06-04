@@ -20,16 +20,11 @@ function searchGoogleToSheet(keywordFromRequest) {
   const inputSheet = getOrCreateSheet(spreadsheet, "Input");
   const resultSheet = getOrCreateSheet(spreadsheet, "SERP Results");
 
-  const keyword = (keywordFromRequest || inputSheet.getRange("A2").getValue() || "")
-    .toString()
-    .trim();
+  const keyword = writeKeywordToInput(spreadsheet, keywordFromRequest);
 
   if (!keyword) {
     throw new Error("請先在 Input!A2 輸入關鍵字");
   }
-
-  inputSheet.getRange("A1").setValue("keyword");
-  inputSheet.getRange("A2").setValue(keyword);
 
   const url =
     "https://serpapi.com/search.json" +
@@ -52,8 +47,6 @@ function searchGoogleToSheet(keywordFromRequest) {
       snippet: item.snippet || ""
     };
   });
-
-  Logger.log("SERP results count: " + results.length);
 
   inputSheet.getRange("B1").setValue("result_count");
   inputSheet.getRange("B2").setValue(results.length);
@@ -125,6 +118,21 @@ function getOrCreateSheet(spreadsheet, sheetName) {
   }
 
   return sheet;
+}
+
+function writeKeywordToInput(spreadsheet, keywordFromRequest) {
+  const inputSheet = getOrCreateSheet(spreadsheet, "Input");
+  const keyword = (keywordFromRequest || inputSheet.getRange("A2").getValue() || "")
+    .toString()
+    .trim();
+
+  if (keyword) {
+    inputSheet.getRange("A1").setValue("keyword");
+    inputSheet.getRange("A2").setValue(keyword);
+    SpreadsheetApp.flush();
+  }
+
+  return keyword;
 }
 
 function extractEntitiesWithOpenRouter(keyword, results, apiKey) {
@@ -411,7 +419,9 @@ function saveToSupabase(rowData) {
 }
 
 function doGet(e) {
-  const keyword = e && e.parameter ? e.parameter.keyword : "";
+  const keyword = (e && e.parameter ? e.parameter.keyword : "")
+    .toString()
+    .trim();
 
   if (!keyword) {
     return ContentService

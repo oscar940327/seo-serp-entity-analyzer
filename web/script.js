@@ -1,4 +1,4 @@
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzUTMGdUw-z2njptvrVeyo99jte7nLkUl9Va7SuiD_3fsIQKMewCuRhTtqgDqZMGURXrA/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvkCkeFzTGMV62fddOf2oWY4fXeoKyK1JfagwEaphbnSGSv0lWmTuy-s0gPgyq1tDd8Q/exec";
 
 const keywordInput = document.getElementById("keywordInput");
 const runButton = document.getElementById("runButton");
